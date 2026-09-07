@@ -19,12 +19,12 @@ bash "$root/scripts/uninstall.sh" --prefix "$prefix" --unit-dir /etc/systemd/use
 echo 'Bundled binary discovered automatically; uninstall preserved independent binary.'
 
 # A damaged bundle must fail before creating installation files.
-mkdir -p "$temp/broken/scripts" "$temp/broken/build" "$temp/broken/licenses"
+mkdir -p "$temp/broken/scripts" "$temp/broken/build"
 cp "$root/scripts/install.sh" "$temp/broken/scripts/"
 bad=$temp/broken/build
 printf '#!/bin/sh\nexit 0\n' >"$bad/wireproxy"
 chmod +x "$bad/wireproxy"
-touch "$temp/broken/licenses/wireproxy.txt" "$bad/BUILD.txt"
+touch "$temp/broken/LICENSE" "$bad/BUILD.txt"
 printf '%064d  wireproxy\n' 0 >"$bad/SHA256SUMS"
 if bash "$temp/broken/scripts/install.sh" --prefix /opt/test --unit-dir /etc/systemd/user --destdir "$temp/rejected" >"$temp/error" 2>&1; then
     echo 'Installer accepted a corrupted bundle' >&2; exit 1

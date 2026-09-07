@@ -23,7 +23,7 @@ if $tray && [[ ! -x $root/build/wireproxy-tray ]]; then
     echo 'Build the tray first: make tray' >&2; exit 1
 fi
 bundle=$root/build
-notices=$root/licenses/wireproxy.txt
+notices=$root/LICENSE
 if [[ ! -x $bundle/wireproxy || ! -f $bundle/SHA256SUMS || ! -f $notices || ! -f $bundle/BUILD.txt ]]; then
     echo 'The wireproxy bundle is missing. Use a complete distribution, or run make wireproxy as a maintainer.' >&2; exit 1
 fi
@@ -46,8 +46,6 @@ done <"$root/scripts/wireproxyctl.service.in" >"$destdir$unit_dir/wireproxyctl.s
 chmod 644 "$destdir$unit_dir/wireproxyctl.service"
 if $tray; then
     install -Dm755 "$root/build/wireproxy-tray" "$destdir$prefix/bin/wireproxy-tray"
-    mkdir -p "$destdir$prefix/share/doc/wireproxyctl"
-    install -m644 "$root/licenses/tray.txt" "$destdir$prefix/share/doc/wireproxyctl/tray.txt"
     desktop=$destdir$prefix/share/applications/wireproxy-tray.desktop
     mkdir -p -- "$(dirname -- "$desktop")"
     # Desktop Exec requires extra backslash escaping, distinct from systemd syntax.

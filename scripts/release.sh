@@ -8,13 +8,13 @@ go=${GO:-go}
 temp=$(mktemp -d)
 trap 'rm -rf -- "$temp"' EXIT
 extras=()
-for item in LICENSE CHANGELOG.md .github .gitignore; do [[ ! -e $root/$item ]] || extras+=("$item"); done
+for item in CHANGELOG.md .github .gitignore; do [[ ! -e $root/$item ]] || extras+=("$item"); done
 mkdir -p "$root/build/releases/$version"
 for target in amd64 arm64; do
     stage=$temp/$target
     mkdir -p "$stage"
     tar -C "$root" \
-        -cf - wireproxyctl licenses scripts README.md GUIDE.md Makefile tray tests "${extras[@]}" | tar -xf - -C "$stage"
+        -cf - wireproxyctl LICENSE scripts README.md GUIDE.md Makefile tray tests "${extras[@]}" | tar -xf - -C "$stage"
     (
         cd "$stage"
         export GOOS=linux GOARCH=$target CGO_ENABLED=0

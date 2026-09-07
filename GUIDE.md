@@ -70,9 +70,8 @@ CLI commands run and exit. In background CLI mode, wireproxy is the only added p
 
 ## Development
 
-The repository has four source folders: `tray/` for the Go app, `scripts/` for
-build and installation, `tests/` for shell tests, and `licenses/` for dependency
-notices. The Bash CLI is the executable `wireproxyctl` at the root. All tray Go
+The repository has three source folders: `tray/` for the Go app, `scripts/` for
+build and installation, and `tests/` for shell tests. The Bash CLI is the executable `wireproxyctl` at the root. All tray Go
 files belong to one package, with its module files in the same folder.
 
 To run from a checkout after building:
@@ -97,8 +96,8 @@ dbus-run-session -- bash tests/resources.sh
 Build the tray before running its D-Bus integration tests. CLI tests use isolated fake tools; the real-wireproxy test uses public example keys, a localhost endpoint, and a real SOCKS5 handshake. It does not establish a VPN tunnel. The systemd test creates and removes a uniquely named runtime user unit, without touching an installed connection. Portal/tray tests use an isolated session bus and mock desktop services. Actual VPN traffic still needs testing with a real provider configuration.
 
 
-Dependency notices are kept in `licenses/tray.txt` and `licenses/wireproxy.txt`.
-The installer puts them beside the installed components. `build/` contains all generated binaries and release archives and is ignored by Git.
+Project terms and all dependency notices are kept in the single `LICENSE` file.
+The installer copies it beside the bundled wireproxy binary. `build/` contains all generated binaries and release archives and is ignored by Git.
 Run `make clean` to remove it. The systemd service template
 lives beside the installer in `scripts/`.
 

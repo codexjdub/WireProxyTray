@@ -42,12 +42,12 @@ install -m644 "$("$go" env GOROOT)/LICENSE" "$temp/bundle/licenses/Go-LICENSE"
     cd "$temp/bundle"
     sha256sum wireproxy >SHA256SUMS
 )
-mkdir -p "$root/build" "$root/licenses"
+mkdir -p "$root/build"
 install -m755 "$temp/bundle/wireproxy" "$root/build/wireproxy"
 install -m644 "$temp/bundle/BUILD.txt" "$temp/bundle/SHA256SUMS" "$root/build/"
 # Keep complete upstream notices in one distributable file, with source labels.
 (
-    printf '# wireproxy — third-party license notices\n\n===== LICENSE =====\n\n'
+    printf '# wireproxy — third-party license notices\n\n\n===== LICENSE =====\n\n'
     cat "$temp/bundle/LICENSE"
     shopt -s globstar nullglob
     export LC_ALL=C
@@ -57,5 +57,10 @@ install -m644 "$temp/bundle/BUILD.txt" "$temp/bundle/SHA256SUMS" "$root/build/"
         cat "$file"
     done
 ) >"$temp/wireproxy.txt"
-install -m644 "$temp/wireproxy.txt" "$root/licenses/wireproxy.txt"
+# The wireproxy section is last; refresh it without changing the project or tray terms.
+marker='# wireproxy — third-party license notices'
+[[ $(grep -Fxc "$marker" "$root/LICENSE") == 1 ]] || { echo 'LICENSE must contain exactly one wireproxy notice section.' >&2; exit 1; }
+awk -v marker="$marker" '$0 == marker { exit } { print }' "$root/LICENSE" >"$temp/LICENSE"
+cat "$temp/wireproxy.txt" >>"$temp/LICENSE"
+install -m644 "$temp/LICENSE" "$root/LICENSE"
 echo "Bundled wireproxy at commit $commit in build/"

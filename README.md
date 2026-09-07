@@ -84,4 +84,4 @@ and validation. See the [changelog](CHANGELOG.md) and
 
 ## License
 
-[MIT](LICENSE) for WireProxyTray's original source. Bundled dependencies retain their own licenses; notices are in [licenses/](licenses/).
+WireProxyTray's original source uses MIT. The single [LICENSE](LICENSE) file contains the project terms and all bundled dependency notices, clearly labeled.

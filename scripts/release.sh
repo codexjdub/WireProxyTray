@@ -14,7 +14,7 @@ for target in amd64 arm64; do
     stage=$temp/$target
     mkdir -p "$stage"
     tar -C "$root" --exclude=bin/wireproxy-tray --exclude=libexec/wireproxyctl/wireproxy \
-        -cf - bin licenses scripts packaging docs releases README.md Makefile go.mod go.sum internal cmd tests "${extras[@]}" | tar -xf - -C "$stage"
+        -cf - bin licenses scripts README.md GUIDE.md Makefile go.mod go.sum internal cmd tests "${extras[@]}" | tar -xf - -C "$stage"
     (
         cd "$stage"
         export GOOS=linux GOARCH=$target CGO_ENABLED=0

@@ -35,7 +35,7 @@ PublicKey = dummy
 EOF
 chmod 600 "$temp/wg.conf"
 sed -e "s|@CLI@|$temp/cli|" -e "s|Environment=XDG_RUNTIME_DIR=%t|Environment=XDG_RUNTIME_DIR=$temp/runtime|" \
-    -e 's/RestartSec=3/RestartSec=1/' "$root/packaging/wireproxyctl.service.in" >"$temp/$unit"
+    -e 's/RestartSec=3/RestartSec=1/' "$root/scripts/wireproxyctl.service.in" >"$temp/$unit"
 systemctl --user link --runtime "$temp/$unit" >/dev/null
 systemctl --user daemon-reload
 export XDG_RUNTIME_DIR=$temp/runtime WIREPROXY_BINARY=$temp/wireproxy

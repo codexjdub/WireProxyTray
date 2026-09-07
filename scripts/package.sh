@@ -20,7 +20,7 @@ for item in LICENSE CHANGELOG.md RELEASE.txt .github .gitignore; do [[ ! -e $ite
 # A fixed default also makes repeated packaging reproducible.
 tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="@${SOURCE_DATE_EPOCH:-0}" \
     -cf - --transform='s|^|wireproxyctl/|' \
-    bin libexec licenses scripts packaging docs releases README.md Makefile go.mod go.sum internal cmd tests "${extras[@]}" \
+    bin libexec licenses scripts README.md GUIDE.md Makefile go.mod go.sum internal cmd tests "${extras[@]}" \
     | gzip -n >"dist/$archive"
 (cd dist && sha256sum "$archive" >"$archive.sha256")
 echo "Created dist/$archive"

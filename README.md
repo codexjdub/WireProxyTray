@@ -64,7 +64,7 @@ Configure individual apps to use **SOCKS5 at `127.0.0.1:1080`** (or your selecte
 
 “Running” means the process is running. Use **Check connection** or `wireproxyctl check` to request an exit-IP check through the proxy. No periodic network checks run; the tray waits for events while idle.
 
-Real VPN traffic has not yet been verified with a provider configuration. See the [validation record](docs/validation.md) for tested behavior and limitations.
+Real VPN traffic has not yet been verified with a provider configuration. See the [validation record](GUIDE.md#validation) for tested behavior and limitations.
 
 ## Uninstall
 
@@ -76,12 +76,11 @@ bash scripts/uninstall.sh
 
 Your original WireGuard configs and separately installed wireproxy binaries are preserved.
 
-## Documentation
+## Reference
 
-- [Detailed usage and configuration](docs/usage.md): ports, paths, desktop requirements, and connection lifecycle.
-- [Development](docs/development.md): building, testing, packaging, and repository layout.
-- [Validation](docs/validation.md): completed checks and remaining limits.
-- [Changelog](CHANGELOG.md) and [release notes](releases/).
+[Reference guide](GUIDE.md): advanced settings, connection lifecycle, development,
+and validation. See the [changelog](CHANGELOG.md) and
+[GitHub Releases](https://github.com/codexjdub/WireProxyTray/releases) for release history.
 
 ## License
 

@@ -5,16 +5,6 @@ prefix=${HOME}/.local
 unit_dir=${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user
 destdir=
 tray=false
-# Module-cache license files can be mode 0444. install replaces old read-only
-# files and sets an explicit mode, so upgrades and repeat installs are safe.
-install_notices() (
-    local source=$1 destination=$2 file
-    shopt -s globstar nullglob dotglob
-    for file in "$source"/**; do
-        [[ -f $file ]] || continue
-        install -Dm644 -- "$file" "$destination/${file#"$source"/}"
-    done
-)
 while (( $# )); do
     case $1 in
         --prefix|--unit-dir|--destdir)
@@ -33,8 +23,8 @@ if $tray && [[ ! -x $root/bin/wireproxy-tray ]]; then
     echo 'Build the tray first: make tray' >&2; exit 1
 fi
 bundle=$root/libexec/wireproxyctl
-notices=$root/licenses/wireproxy
-if [[ ! -x $bundle/wireproxy || ! -f $bundle/SHA256SUMS || ! -f $notices/LICENSE || ! -f $bundle/BUILD.txt || ! -d $notices/dependencies ]]; then
+notices=$root/licenses/wireproxy.txt
+if [[ ! -x $bundle/wireproxy || ! -f $bundle/SHA256SUMS || ! -f $notices || ! -f $bundle/BUILD.txt ]]; then
     echo 'The wireproxy bundle is missing. Use a complete distribution, or run make wireproxy as a maintainer.' >&2; exit 1
 fi
 (cd "$bundle" && sha256sum --check --status SHA256SUMS) || { echo 'Bundled wireproxy checksum failed.' >&2; exit 1; }
@@ -44,8 +34,7 @@ install -Dm755 "$bundle/wireproxy" "$destdir$prefix/libexec/wireproxyctl/wirepro
 for file in BUILD.txt SHA256SUMS; do
     install -m644 "$bundle/$file" "$destdir$prefix/libexec/wireproxyctl/$file"
 done
-install -m644 "$notices/LICENSE" "$destdir$prefix/libexec/wireproxyctl/LICENSE"
-install_notices "$notices/dependencies" "$destdir$prefix/libexec/wireproxyctl/licenses"
+install -m644 "$notices" "$destdir$prefix/libexec/wireproxyctl/LICENSE"
 install -Dm755 "$root/bin/wireproxyctl" "$destdir$prefix/bin/wireproxyctl"
 # systemd ExecStart quoting includes literal dollars and percent specifiers.
 cli=$prefix/bin/wireproxyctl
@@ -53,12 +42,12 @@ escaped=${cli//\\/\\\\}; escaped=${escaped//\"/\\\"}; escaped=${escaped//\$/\$\$
 mkdir -p -- "$destdir$unit_dir"
 while IFS= read -r line; do
     if [[ $line == ExecStart=* ]]; then printf 'ExecStart="%s" _run\n' "$escaped"; else printf '%s\n' "$line"; fi
-done <"$root/packaging/wireproxyctl.service.in" >"$destdir$unit_dir/wireproxyctl.service"
+done <"$root/scripts/wireproxyctl.service.in" >"$destdir$unit_dir/wireproxyctl.service"
 chmod 644 "$destdir$unit_dir/wireproxyctl.service"
 if $tray; then
     install -Dm755 "$root/bin/wireproxy-tray" "$destdir$prefix/bin/wireproxy-tray"
     mkdir -p "$destdir$prefix/share/doc/wireproxyctl"
-    install_notices "$root/licenses/tray" "$destdir$prefix/share/doc/wireproxyctl/tray"
+    install -m644 "$root/licenses/tray.txt" "$destdir$prefix/share/doc/wireproxyctl/tray.txt"
     desktop=$destdir$prefix/share/applications/wireproxy-tray.desktop
     mkdir -p -- "$(dirname -- "$desktop")"
     # Desktop Exec requires extra backslash escaping, distinct from systemd syntax.

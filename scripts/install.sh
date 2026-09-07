@@ -33,17 +33,19 @@ if $tray && [[ ! -x $root/bin/wireproxy-tray ]]; then
     echo 'Build the tray first: make tray' >&2; exit 1
 fi
 bundle=$root/libexec/wireproxyctl
-if [[ ! -x $bundle/wireproxy || ! -f $bundle/SHA256SUMS || ! -f $bundle/LICENSE || ! -f $bundle/BUILD.txt || ! -d $bundle/licenses ]]; then
+notices=$root/licenses/wireproxy
+if [[ ! -x $bundle/wireproxy || ! -f $bundle/SHA256SUMS || ! -f $notices/LICENSE || ! -f $bundle/BUILD.txt || ! -d $notices/dependencies ]]; then
     echo 'The wireproxy bundle is missing. Use a complete distribution, or run make wireproxy as a maintainer.' >&2; exit 1
 fi
 (cd "$bundle" && sha256sum --check --status SHA256SUMS) || { echo 'Bundled wireproxy checksum failed.' >&2; exit 1; }
 case $(uname -m) in x86_64) architecture=amd64;; aarch64|arm64) architecture=arm64;; *) architecture=$(uname -m);; esac
 grep -Fx "Target: linux/$architecture" "$bundle/BUILD.txt" >/dev/null || { echo 'This wireproxy bundle was built for a different architecture.' >&2; exit 1; }
 install -Dm755 "$bundle/wireproxy" "$destdir$prefix/libexec/wireproxyctl/wireproxy"
-for file in LICENSE BUILD.txt SHA256SUMS; do
+for file in BUILD.txt SHA256SUMS; do
     install -m644 "$bundle/$file" "$destdir$prefix/libexec/wireproxyctl/$file"
 done
-install_notices "$bundle/licenses" "$destdir$prefix/libexec/wireproxyctl/licenses"
+install -m644 "$notices/LICENSE" "$destdir$prefix/libexec/wireproxyctl/LICENSE"
+install_notices "$notices/dependencies" "$destdir$prefix/libexec/wireproxyctl/licenses"
 install -Dm755 "$root/bin/wireproxyctl" "$destdir$prefix/bin/wireproxyctl"
 # systemd ExecStart quoting includes literal dollars and percent specifiers.
 cli=$prefix/bin/wireproxyctl

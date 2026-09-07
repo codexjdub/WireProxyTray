@@ -42,6 +42,9 @@ install -m644 "$("$go" env GOROOT)/LICENSE" "$temp/bundle/licenses/Go-LICENSE"
     cd "$temp/bundle"
     sha256sum wireproxy >SHA256SUMS
 )
-mkdir -p "$root/libexec/wireproxyctl"
-cp -R "$temp/bundle/." "$root/libexec/wireproxyctl/"
+mkdir -p "$root/libexec/wireproxyctl" "$root/licenses/wireproxy/dependencies"
+install -m755 "$temp/bundle/wireproxy" "$root/libexec/wireproxyctl/wireproxy"
+install -m644 "$temp/bundle/BUILD.txt" "$temp/bundle/SHA256SUMS" "$root/libexec/wireproxyctl/"
+install -m644 "$temp/bundle/LICENSE" "$root/licenses/wireproxy/LICENSE"
+cp -R "$temp/bundle/licenses/." "$root/licenses/wireproxy/dependencies/"
 echo "Bundled wireproxy at commit $commit in libexec/wireproxyctl/"

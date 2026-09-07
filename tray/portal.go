@@ -1,5 +1,5 @@
-// Package portal opens the user's desktop file chooser over D-Bus.
-package portal
+// The portal client opens the user's desktop file chooser over D-Bus.
+package main
 
 import (
 	"context"

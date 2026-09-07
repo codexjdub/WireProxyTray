@@ -1,4 +1,4 @@
-package tray
+package main
 
 import (
 	"context"
@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/codexjdub/WireProxyTray/internal/portal"
 )
 
 func TestPortValidationAndPersistence(t *testing.T) {
@@ -49,7 +47,7 @@ func TestCustomPortDialog(t *testing.T) {
 	if err := os.WriteFile(path, []byte("#!/bin/sh\nexit 1\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := askPort(context.Background(), 1080); !errors.Is(err, portal.ErrCancelled) {
+	if _, err := askPort(context.Background(), 1080); !errors.Is(err, ErrCancelled) {
 		t.Fatalf("cancel: %v", err)
 	}
 }

@@ -8,13 +8,13 @@ go=${GO:-go}
 temp=$(mktemp -d)
 trap 'rm -rf -- "$temp"' EXIT
 extras=()
-for item in LICENSE CHANGELOG.md libexec .github .gitignore; do [[ ! -e $root/$item ]] || extras+=("$item"); done
-mkdir -p "$root/dist/$version"
+for item in LICENSE CHANGELOG.md .github .gitignore; do [[ ! -e $root/$item ]] || extras+=("$item"); done
+mkdir -p "$root/build/releases/$version"
 for target in amd64 arm64; do
     stage=$temp/$target
     mkdir -p "$stage"
-    tar -C "$root" --exclude=bin/wireproxy-tray --exclude=libexec/wireproxyctl/wireproxy \
-        -cf - bin licenses scripts README.md GUIDE.md Makefile go.mod go.sum internal cmd tests "${extras[@]}" | tar -xf - -C "$stage"
+    tar -C "$root" \
+        -cf - wireproxyctl licenses scripts README.md GUIDE.md Makefile tray tests "${extras[@]}" | tar -xf - -C "$stage"
     (
         cd "$stage"
         export GOOS=linux GOARCH=$target CGO_ENABLED=0
@@ -26,10 +26,10 @@ for target in amd64 arm64; do
         fi
         bash scripts/package.sh
     )
-    cp "$stage/dist/wireproxyctl-linux-$target.tar.gz" "$stage/dist/wireproxyctl-linux-$target.tar.gz.sha256" "$root/dist/$version/"
+    cp "$stage/build/releases/wireproxyctl-linux-$target.tar.gz" "$stage/build/releases/wireproxyctl-linux-$target.tar.gz.sha256" "$root/build/releases/$version/"
 done
 (
-    cd "$root/dist/$version"
+    cd "$root/build/releases/$version"
     sha256sum wireproxyctl-linux-amd64.tar.gz wireproxyctl-linux-arm64.tar.gz >SHA256SUMS
 )
-echo "Release packages: dist/$version/"
+echo "Release packages: build/releases/$version/"

@@ -3,7 +3,7 @@
 # Uses public example keys and a localhost endpoint, never a real VPN account.
 set -euo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-cli=${CLI_UNDER_TEST:-$root/bin/wireproxyctl}
+cli=${CLI_UNDER_TEST:-$root/wireproxyctl}
 temp=$(mktemp -d)
 fg=
 cleanup() {

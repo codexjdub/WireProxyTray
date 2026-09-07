@@ -1,6 +1,6 @@
 //go:build integration
 
-package tray
+package main
 
 import (
 	"bytes"
@@ -26,9 +26,9 @@ func (w *mockWatcher) RegisterStatusNotifierItem(path string, sender dbus.Sender
 	return nil
 }
 
-// Run with dbus-run-session -- go test -tags=integration ./internal/tray.
+// Run from the repository root with make integration.
 func TestTrayRegistrationStateAndHostRestart(t *testing.T) {
-	root, err := filepath.Abs("../..")
+	root, err := filepath.Abs("..")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestTrayRegistrationStateAndHostRestart(t *testing.T) {
 	if err := os.Chmod(runtime, 0700); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command(filepath.Join(root, "bin/wireproxy-tray"), "--cli", filepath.Join(root, "bin/wireproxyctl"))
+	cmd := exec.Command(filepath.Join(root, "build/wireproxy-tray"), "--cli", filepath.Join(root, "wireproxyctl"))
 	tools := filepath.Join(runtime, "tools")
 	if err := os.Mkdir(tools, 0700); err != nil {
 		t.Fatal(err)

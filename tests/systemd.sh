@@ -18,7 +18,7 @@ mkdir -m700 "$temp/runtime"
 # systemctl uses this private manager socket rather than the session-bus variable.
 ln -s "$XDG_RUNTIME_DIR/systemd" "$temp/runtime/systemd"
 # Only the unit name differs from production, allowing safe coexistence with an installed app.
-sed "s/^UNIT=wireproxyctl.service$/UNIT=$unit/" "$root/bin/wireproxyctl" >"$temp/cli"
+sed "s/^UNIT=wireproxyctl.service$/UNIT=$unit/" "$root/wireproxyctl" >"$temp/cli"
 chmod +x "$temp/cli"
 cat >"$temp/wireproxy" <<EOF
 #!/usr/bin/env bash

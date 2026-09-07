@@ -10,7 +10,7 @@ export XDG_RUNTIME_DIR=$temp/runtime MOCK_ROOT=$temp/mock
 mkdir -m700 "$XDG_RUNTIME_DIR" "$MOCK_ROOT" "$temp/tools"
 export PATH=$temp/tools:$PATH
 export WIREPROXY_BINARY=$temp/tools/wireproxy
-cli=$root/bin/wireproxyctl
+cli=$root/wireproxyctl
 source_file=$temp/'work $profile; # test.conf'
 printf '[Interface]\nPrivateKey = test-secret\nAddress = 10.0.0.2/32\n[Peer]\nPublicKey = test\n' >"$source_file"
 chmod 600 "$source_file"

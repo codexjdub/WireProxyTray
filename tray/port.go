@@ -1,4 +1,4 @@
-package tray
+package main
 
 import (
 	"context"
@@ -9,8 +9,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-
-	"github.com/codexjdub/WireProxyTray/internal/portal"
 )
 
 func ParsePort(text string) (int, error) {
@@ -83,7 +81,7 @@ func askPort(ctx context.Context, current int) (int, error) {
 		if err != nil {
 			var exit *exec.ExitError
 			if errors.As(err, &exit) && exit.ExitCode() == 1 {
-				return 0, portal.ErrCancelled
+				return 0, ErrCancelled
 			}
 			return 0, fmt.Errorf("could not open port dialog: %w", err)
 		}

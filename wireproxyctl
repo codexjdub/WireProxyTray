@@ -139,12 +139,15 @@ connect() {
     [[ -f $resolved && -r $resolved ]] || die 'Config must be a readable regular file.'
     # go-ini supports quoted values. Reject controls/backticks so backtick quoting is exact.
     [[ ! $resolved =~ [[:cntrl:]] && $resolved != *'`'* && $resolved != *'%(WGConfig)s'* ]] || die 'Config path contains an unsupported control, backtick, or WGConfig interpolation sequence.'
-    local bundled
-    bundled=$(dirname -- "$(realpath -e -- "${BASH_SOURCE[0]}")")/../libexec/wireproxyctl/wireproxy
+    local bundled source_dir
+    source_dir=$(dirname -- "$(realpath -e -- "${BASH_SOURCE[0]}")")
+    bundled=$source_dir/../libexec/wireproxyctl/wireproxy
     if [[ -n ${WIREPROXY_BINARY:-} ]]; then
         binary=$WIREPROXY_BINARY
     elif [[ -x $bundled ]]; then
         binary=$bundled
+    elif [[ -x $source_dir/build/wireproxy ]]; then
+        binary=$source_dir/build/wireproxy
     else
         binary=wireproxy
     fi

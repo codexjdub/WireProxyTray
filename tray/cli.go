@@ -1,5 +1,5 @@
-// Package control invokes the Bash CLI without involving a shell.
-package control
+// The CLI client invokes the Bash CLI without involving a shell.
+package main
 
 import (
 	"context"

@@ -19,10 +19,10 @@ done
 for path in "$prefix" "$unit_dir" "${destdir:-/}"; do
     [[ $path = /* && ! $path =~ [[:cntrl:]] ]] || { echo 'Paths must be absolute and contain no control characters.' >&2; exit 1; }
 done
-if $tray && [[ ! -x $root/bin/wireproxy-tray ]]; then
+if $tray && [[ ! -x $root/build/wireproxy-tray ]]; then
     echo 'Build the tray first: make tray' >&2; exit 1
 fi
-bundle=$root/libexec/wireproxyctl
+bundle=$root/build
 notices=$root/licenses/wireproxy.txt
 if [[ ! -x $bundle/wireproxy || ! -f $bundle/SHA256SUMS || ! -f $notices || ! -f $bundle/BUILD.txt ]]; then
     echo 'The wireproxy bundle is missing. Use a complete distribution, or run make wireproxy as a maintainer.' >&2; exit 1
@@ -35,7 +35,7 @@ for file in BUILD.txt SHA256SUMS; do
     install -m644 "$bundle/$file" "$destdir$prefix/libexec/wireproxyctl/$file"
 done
 install -m644 "$notices" "$destdir$prefix/libexec/wireproxyctl/LICENSE"
-install -Dm755 "$root/bin/wireproxyctl" "$destdir$prefix/bin/wireproxyctl"
+install -Dm755 "$root/wireproxyctl" "$destdir$prefix/bin/wireproxyctl"
 # systemd ExecStart quoting includes literal dollars and percent specifiers.
 cli=$prefix/bin/wireproxyctl
 escaped=${cli//\\/\\\\}; escaped=${escaped//\"/\\\"}; escaped=${escaped//\$/\$\$}; escaped=${escaped//%/%%}
@@ -45,7 +45,7 @@ while IFS= read -r line; do
 done <"$root/scripts/wireproxyctl.service.in" >"$destdir$unit_dir/wireproxyctl.service"
 chmod 644 "$destdir$unit_dir/wireproxyctl.service"
 if $tray; then
-    install -Dm755 "$root/bin/wireproxy-tray" "$destdir$prefix/bin/wireproxy-tray"
+    install -Dm755 "$root/build/wireproxy-tray" "$destdir$prefix/bin/wireproxy-tray"
     mkdir -p "$destdir$prefix/share/doc/wireproxyctl"
     install -m644 "$root/licenses/tray.txt" "$destdir$prefix/share/doc/wireproxyctl/tray.txt"
     desktop=$destdir$prefix/share/applications/wireproxy-tray.desktop

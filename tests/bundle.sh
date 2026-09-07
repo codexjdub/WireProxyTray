@@ -19,9 +19,9 @@ bash "$root/scripts/uninstall.sh" --prefix "$prefix" --unit-dir /etc/systemd/use
 echo 'Bundled binary discovered automatically; uninstall preserved independent binary.'
 
 # A damaged bundle must fail before creating installation files.
-mkdir -p "$temp/broken/scripts" "$temp/broken/libexec/wireproxyctl" "$temp/broken/licenses"
+mkdir -p "$temp/broken/scripts" "$temp/broken/build" "$temp/broken/licenses"
 cp "$root/scripts/install.sh" "$temp/broken/scripts/"
-bad=$temp/broken/libexec/wireproxyctl
+bad=$temp/broken/build
 printf '#!/bin/sh\nexit 0\n' >"$bad/wireproxy"
 chmod +x "$bad/wireproxy"
 touch "$temp/broken/licenses/wireproxy.txt" "$bad/BUILD.txt"

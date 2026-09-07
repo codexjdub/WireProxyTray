@@ -12,8 +12,6 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/codexjdub/WireProxyTray/internal/control"
-	"github.com/codexjdub/WireProxyTray/internal/tray"
 	"github.com/godbus/dbus/v5"
 )
 
@@ -36,7 +34,7 @@ func run() error {
 	})
 	if !override {
 		var err error
-		*port, err = tray.LoadPort()
+		*port, err = LoadPort()
 		if err != nil {
 			return fmt.Errorf("read saved port: %w", err)
 		}
@@ -60,7 +58,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("wireproxyctl not found; install the CLI or pass --cli PATH")
 	}
-	client := control.Client{Path: path}
+	client := Client{Path: path}
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 	// Also prepares and validates the private runtime directory.
@@ -79,7 +77,7 @@ func run() error {
 	if reply != dbus.RequestNameReplyPrimaryOwner {
 		return fmt.Errorf("WireProxy tray is already running")
 	}
-	return tray.Run(ctx, conn, client, filepath.Join(os.Getenv("XDG_RUNTIME_DIR"), "wireproxyctl"), *port)
+	return Run(ctx, conn, client, filepath.Join(os.Getenv("XDG_RUNTIME_DIR"), "wireproxyctl"), *port)
 }
 
 func main() {

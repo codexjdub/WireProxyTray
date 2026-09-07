@@ -70,12 +70,24 @@ CLI commands run and exit. In background CLI mode, wireproxy is the only added p
 
 ## Development
 
-Maintainers can rebuild the bundle with `make wireproxy` (Git and Go 1.26+ are required by the pinned wireproxy source), build the tray with `make tray` (Go 1.23+), and create a complete Linux archive with `make package` (requires binutils' `readelf`). `bash scripts/release.sh v0.1.0` builds separate AMD64 and ARM64 packages under `dist/v0.1.0/`, without executing ARM64 binaries. Both binaries disable cgo. `scripts/build-wireproxy.sh` fetches the exact pinned commit and includes upstream and dependency license notices; ordinary installation is offline and performs no build.
+The repository has four source folders: `tray/` for the Go app, `scripts/` for
+build and installation, `tests/` for shell tests, and `licenses/` for dependency
+notices. The Bash CLI is the executable `wireproxyctl` at the root. All tray Go
+files belong to one package, with its module files in the same folder.
+
+To run from a checkout after building:
+
+```sh
+./wireproxyctl status
+build/wireproxy-tray --cli "$PWD/wireproxyctl"
+```
+
+Maintainers can rebuild the bundle with `make wireproxy` (Git and Go 1.26+ are required by the pinned wireproxy source), build the tray with `make tray` (Go 1.23+), and create a complete Linux archive with `make package` (requires binutils' `readelf`). `bash scripts/release.sh v0.1.0` builds separate AMD64 and ARM64 packages under `build/releases/v0.1.0/`, without executing ARM64 binaries. Both binaries disable cgo. `scripts/build-wireproxy.sh` fetches the exact pinned commit and includes upstream and dependency license notices; ordinary installation is offline and performs no build.
 
 ```sh
 make test
 make check
-dbus-run-session -- go test -buildvcs=false -tags=integration ./internal/portal ./internal/tray
+make integration
 bash tests/real-wireproxy.sh
 bash tests/systemd.sh
 bash tests/bundle.sh
@@ -86,8 +98,8 @@ Build the tray before running its D-Bus integration tests. CLI tests use isolate
 
 
 Dependency notices are kept in `licenses/tray.txt` and `licenses/wireproxy.txt`.
-The installer puts them beside the installed components. `libexec/` and `dist/`
-contain generated artifacts and are ignored by Git. The systemd service template
+The installer puts them beside the installed components. `build/` contains all generated binaries and release archives and is ignored by Git.
+Run `make clean` to remove it. The systemd service template
 lives beside the installer in `scripts/`.
 
 Update `CHANGELOG.md` before a release and use its entry for the GitHub release
@@ -114,7 +126,7 @@ Both AMD64 and ARM64 archives built successfully with static executables, matchi
 - Installer regression: license files copied from Go's module cache were read-only, causing repeat installation to fail. Notices now use explicit mode 0644 installation. Tests passed for first install, replacement of old 0444 files, a third repeat install and uninstall.
 - Tray port selector: unit tests cover numeric validation, saved selection and permissions, dialog output and cancellation. Private D-Bus tests click a preset and Custom, verify the connection label changes and the port is saved, using a mock dialog executable. Live custom entry requires the optional Zenity utility.
 
-The tray was built with Go 1.27.1, cgo disabled, and stripped symbols. `file` confirms a statically linked Linux x86-64 executable. Module dependencies are pinned in `go.mod` and `go.sum`.
+The tray was built with Go 1.27.1, cgo disabled, and stripped symbols. `file` confirms a statically linked Linux x86-64 executable. Module dependencies are pinned in `tray/go.mod` and `tray/go.sum`.
 
 The wireproxy bundle is built from windtf/wireproxy commit `70dabd8db2cb9e0cf4f3d3b9f528fb8637ad3379`, the same source used by the initial integration tests. The bundle includes its build provenance, SHA-256 checksum, upstream license and dependency license notices. It installs into a private application directory, preserving separately installed wireproxy executables.
 

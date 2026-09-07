@@ -42,9 +42,9 @@ install -m644 "$("$go" env GOROOT)/LICENSE" "$temp/bundle/licenses/Go-LICENSE"
     cd "$temp/bundle"
     sha256sum wireproxy >SHA256SUMS
 )
-mkdir -p "$root/libexec/wireproxyctl" "$root/licenses"
-install -m755 "$temp/bundle/wireproxy" "$root/libexec/wireproxyctl/wireproxy"
-install -m644 "$temp/bundle/BUILD.txt" "$temp/bundle/SHA256SUMS" "$root/libexec/wireproxyctl/"
+mkdir -p "$root/build" "$root/licenses"
+install -m755 "$temp/bundle/wireproxy" "$root/build/wireproxy"
+install -m644 "$temp/bundle/BUILD.txt" "$temp/bundle/SHA256SUMS" "$root/build/"
 # Keep complete upstream notices in one distributable file, with source labels.
 (
     printf '# wireproxy — third-party license notices\n\n===== LICENSE =====\n\n'
@@ -58,4 +58,4 @@ install -m644 "$temp/bundle/BUILD.txt" "$temp/bundle/SHA256SUMS" "$root/libexec/
     done
 ) >"$temp/wireproxy.txt"
 install -m644 "$temp/wireproxy.txt" "$root/licenses/wireproxy.txt"
-echo "Bundled wireproxy at commit $commit in libexec/wireproxyctl/"
+echo "Bundled wireproxy at commit $commit in build/"

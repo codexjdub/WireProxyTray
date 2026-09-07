@@ -1,4 +1,4 @@
-package tray
+package main
 
 import (
 	"bytes"
@@ -15,13 +15,10 @@ import (
 
 	"fyne.io/systray"
 	"github.com/godbus/dbus/v5"
-
-	"github.com/codexjdub/WireProxyTray/internal/control"
-	"github.com/codexjdub/WireProxyTray/internal/portal"
 )
 
 type result struct {
-	state control.State
+	state State
 	err   error
 }
 
@@ -59,7 +56,7 @@ func notify(ctx context.Context, conn *dbus.Conn, text string) {
 		"org.freedesktop.Notifications.Notify", 0, "WireProxy", uint32(0), "network-vpn", "WireProxy", html.EscapeString(text), []string{}, map[string]dbus.Variant{}, int32(8000))
 }
 
-func Run(ctx context.Context, conn *dbus.Conn, client control.Client, directory string, port int) error {
+func Run(ctx context.Context, conn *dbus.Conn, client Client, directory string, port int) error {
 	wake := make(chan struct{}, 1)
 	if err := Watch(ctx, conn, directory, wake); err != nil {
 		return err
@@ -107,7 +104,7 @@ func Run(ctx context.Context, conn *dbus.Conn, client control.Client, directory 
 		actions := make(chan error, 1)
 		go func() {
 			busy, reading, pending := false, false, false
-			current := control.State{}
+			current := State{}
 			refreshStatus := func() {
 				if reading {
 					pending = true
@@ -201,7 +198,7 @@ func Run(ctx context.Context, conn *dbus.Conn, client control.Client, directory 
 				case r := <-results:
 					reading = false
 					if r.err != nil {
-						current = control.State{Status: "unknown"}
+						current = State{Status: "unknown"}
 						status.SetTooltip(r.err.Error())
 					} else {
 						current = r.state
@@ -213,7 +210,7 @@ func Run(ctx context.Context, conn *dbus.Conn, client control.Client, directory 
 					}
 				case err := <-actions:
 					busy = false
-					if err != nil && !errors.Is(err, portal.ErrCancelled) {
+					if err != nil && !errors.Is(err, ErrCancelled) {
 						go notify(ctx, conn, err.Error())
 					}
 					update()
@@ -246,7 +243,7 @@ func Run(ctx context.Context, conn *dbus.Conn, client control.Client, directory 
 					action(func() error {
 						chooserCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 						defer cancel()
-						path, err := portal.OpenConfig(chooserCtx, conn)
+						path, err := OpenConfig(chooserCtx, conn)
 						if err != nil {
 							return err
 						}

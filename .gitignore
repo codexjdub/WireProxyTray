@@ -1,0 +1,8 @@
+/bin/wireproxy-tray
+/libexec/wireproxyctl/wireproxy
+/libexec/wireproxyctl/BUILD.txt
+/libexec/wireproxyctl/SHA256SUMS
+/dist/
+*.conf
+/.agents/
+/.codex/

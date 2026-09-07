@@ -1,0 +1,17 @@
+[Unit]
+Description=Wireproxy managed by wireproxyctl
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=exec
+ExecStart=@CLI@ _run
+Environment=XDG_RUNTIME_DIR=%t
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=5
+KillMode=control-group
+UMask=0077
+NoNewPrivileges=yes
+
+# Deliberately no [Install] target: connect starts this service on demand.

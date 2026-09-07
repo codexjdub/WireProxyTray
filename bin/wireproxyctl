@@ -1,0 +1,297 @@
+#!/usr/bin/env bash
+# WireProxy controller. State is data, never sourced as shell code.
+set -Eeuo pipefail
+umask 077
+export LC_ALL=C
+UNIT=wireproxyctl.service
+
+die() { printf 'wireproxyctl: %s\n' "$*" >&2; exit 1; }
+need() { command -v "$1" >/dev/null || die "Required command not found: $1"; }
+usage() {
+    cat <<'EOF'
+Usage:
+  wireproxyctl connect CONFIG [--port PORT] [--foreground]
+  wireproxyctl disconnect
+  wireproxyctl status [--json]
+  wireproxyctl check
+  wireproxyctl logs [--follow]
+
+CONFIG is a regular WireGuard file, left untouched. Default proxy:
+socks5h://127.0.0.1:1080. Only one connection can run at a time.
+Background mode requires the installed systemd user service. Foreground
+mode needs no systemd. WIREPROXY_BINARY may specify an executable path.
+EOF
+}
+
+runtime() {
+    [[ -n ${XDG_RUNTIME_DIR:-} && $XDG_RUNTIME_DIR = /* ]] || die 'XDG_RUNTIME_DIR must name your private user runtime directory.'
+    [[ -d $XDG_RUNTIME_DIR && -O $XDG_RUNTIME_DIR && ! -L $XDG_RUNTIME_DIR ]] || die 'Runtime directory must be a directory owned by you, not a symlink.'
+    local permissions
+    permissions=$(stat -c %a -- "$XDG_RUNTIME_DIR")
+    (( (8#$permissions & 0077) == 0 )) || die 'Runtime directory must not be accessible by other users (expected mode 0700).'
+    RUNTIME=$XDG_RUNTIME_DIR/wireproxyctl
+    [[ ! -L $RUNTIME ]] || die 'Refusing a symlink as the application runtime directory.'
+    mkdir -p -- "$RUNTIME"
+    [[ -O $RUNTIME ]] || die 'Application runtime directory is not owned by you.'
+    chmod 700 -- "$RUNTIME"
+}
+
+lock_actions() {
+    exec 9>"$RUNTIME/control.lock"
+    flock -w 15 9 || die 'Another operation is busy; try again shortly.'
+}
+
+proc_start() {
+    local record rest
+    [[ $1 =~ ^[1-9][0-9]*$ && -r /proc/$1/stat ]] || return 1
+    IFS= read -r record <"/proc/$1/stat" || return 1
+    rest=${record##*) }
+    read -r -a fields <<<"$rest"
+    [[ ${fields[0]} != Z ]] || return 1
+    printf '%s' "${fields[19]}"
+}
+
+load_state() {
+    MODE= CONFIG= PORT= BINARY= OWNER= START=
+    if [[ -f $RUNTIME/state ]]; then
+        local -a lines
+        mapfile -t lines <"$RUNTIME/state"
+        [[ ${#lines[@]} == 7 && ${lines[0]} == 1 ]] || die 'Invalid runtime state. Disconnect to reset it.'
+        MODE=${lines[1]} CONFIG=${lines[2]} PORT=${lines[3]} BINARY=${lines[4]} OWNER=${lines[5]} START=${lines[6]}
+        [[ $MODE == foreground || $MODE == background ]] || die 'Invalid connection mode in state.'
+        [[ $PORT =~ ^[0-9]{1,5}$ ]] && (( PORT >= 1 && PORT <= 65535 )) || die 'Invalid proxy port in state.'
+    fi
+}
+
+foreground_alive() {
+    [[ $MODE == foreground && -n $OWNER && -n $START ]] && [[ $(proc_start "$OWNER" 2>/dev/null || :) == "$START" ]]
+}
+
+service_state() {
+    ACTIVE=inactive SUB=dead
+    local output key value
+    if ! output=$(systemctl --user show "$UNIT" --property=ActiveState,SubState 2>/dev/null); then
+        ACTIVE=unavailable
+        return
+    fi
+    while IFS='=' read -r key value; do
+        case $key in ActiveState) ACTIVE=$value;; SubState) SUB=$value;; esac
+    done <<<"$output"
+}
+
+get_status() {
+    load_state
+    STATUS=disconnected
+    case $MODE in
+        foreground) if foreground_alive; then STATUS=running; fi;;
+        background)
+            service_state
+            case $ACTIVE in
+                active) STATUS=running;;
+                activating) STATUS=reconnecting;;
+                deactivating) STATUS=stopping;;
+                failed) STATUS=failed;;
+                unavailable) STATUS=unknown;;
+            esac;;
+    esac
+}
+
+json_string() {
+    local s=$1
+    s=${s//\\/\\\\}; s=${s//\"/\\\"}; s=${s//$'\n'/\\n}; s=${s//$'\r'/\\r}; s=${s//$'\t'/\\t}
+    printf '"%s"' "$s"
+}
+
+print_status() {
+    get_status
+    local proxy=
+    [[ -z $PORT ]] || proxy=socks5h://127.0.0.1:$PORT
+    if [[ ${1:-} == --json ]]; then
+        printf '{"status":'; json_string "$STATUS"
+        printf ',"mode":'; json_string "$MODE"
+        printf ',"config":'; json_string "$CONFIG"
+        printf ',"proxy":'; json_string "$proxy"
+        printf '}\n'
+    else
+        printf 'State: %s\n' "$STATUS"
+        [[ -z $MODE ]] || printf 'Mode: %s\nConfig: %s\nProxy: %s\n' "$MODE" "$CONFIG" "$proxy"
+        [[ $STATUS != running ]] || printf 'Process running; use "wireproxyctl check" to verify proxy traffic.\n'
+    fi
+}
+
+clear_state() { rm -f -- "$RUNTIME/active.conf" "$RUNTIME/state"; }
+
+connect() {
+    local source= port=1080 foreground=false candidate binary resolved perm
+    while (( $# )); do
+        case $1 in
+            --port) (( $# >= 2 )) || die '--port requires a number'; port=$2; shift 2;;
+            --foreground) foreground=true; shift;;
+            --*) die "Unknown option: $1";;
+            *) [[ -z $source ]] || die 'Specify exactly one config file'; source=$1; shift;;
+        esac
+    done
+    [[ -n $source ]] || die 'A WireGuard config path is required.'
+    [[ $port =~ ^[0-9]{1,5}$ ]] || die 'Port must be a number between 1024 and 65535.'
+    port=$((10#$port))
+    (( port >= 1024 && port <= 65535 )) || die 'Port must be between 1024 and 65535.'
+    resolved=$(realpath -e -- "$source") || die 'Config file does not exist.'
+    [[ -f $resolved && -r $resolved ]] || die 'Config must be a readable regular file.'
+    # go-ini supports quoted values. Reject controls/backticks so backtick quoting is exact.
+    [[ ! $resolved =~ [[:cntrl:]] && $resolved != *'`'* && $resolved != *'%(WGConfig)s'* ]] || die 'Config path contains an unsupported control, backtick, or WGConfig interpolation sequence.'
+    local bundled
+    bundled=$(dirname -- "$(realpath -e -- "${BASH_SOURCE[0]}")")/../libexec/wireproxyctl/wireproxy
+    if [[ -n ${WIREPROXY_BINARY:-} ]]; then
+        binary=$WIREPROXY_BINARY
+    elif [[ -x $bundled ]]; then
+        binary=$bundled
+    else
+        binary=wireproxy
+    fi
+    binary=$(command -v -- "$binary") || die 'wireproxy is missing; install it or set WIREPROXY_BINARY.'
+    binary=$(realpath -e -- "$binary")
+    [[ -x $binary && ! $binary =~ [[:cntrl:]] ]] || die 'Invalid wireproxy executable.'
+    # A missing peer/interface gives a useful error; wireproxy does the full validation.
+    awk '
+      /^[[:space:]]*\[/ { s=tolower($0); sub(/^[[:space:]]*/, "", s); sub(/\].*$/, "]", s)
+        if(s=="[interface]") i=1; else if(s=="[peer]") p=1; else bad=1 }
+      END { exit !(i && p && !bad) }
+    ' "$resolved" || die 'Expected a regular WireGuard config with [Interface] and [Peer] sections only.'
+    get_status
+    [[ $STATUS == disconnected || $STATUS == failed ]] || die "A connection is $STATUS. Disconnect before connecting again."
+    if ! $foreground; then
+        need systemctl
+        [[ $(systemctl --user show "$UNIT" --property=LoadState --value 2>/dev/null) == loaded ]] || die 'Install the user service with scripts/install.sh, or use --foreground.'
+    fi
+    # Reserve the single connection slot until wireproxy (or the foreground parent) owns it.
+    exec 8>"$RUNTIME/session.lock"
+    flock -n 8 || die 'A wireproxyctl connection is already starting or running.'
+    need ss
+    local listeners
+    listeners=$(ss -H -ltn "sport = :$port") || die 'Unable to inspect local listener ports.'
+    [[ -z $listeners ]] || die "TCP port $port is occupied. Choose --port OTHER_PORT or stop its owner."
+    perm=$(stat -c %a -- "$resolved")
+    if (( (8#$perm & 0077) != 0 )); then
+        printf 'Warning: config permissions are %s; consider chmod 600 on the original file.\n' "$perm" >&2
+    fi
+    candidate=$(mktemp "$RUNTIME/config.XXXXXX")
+    trap 'rm -f -- "${candidate:-}"' EXIT
+    printf 'WGConfig = `%s`\n\n[Socks5]\nBindAddress = 127.0.0.1:%s\n' "$resolved" "$port" >"$candidate"
+    need timeout
+    if ! timeout 15 "$binary" -n -c "$candidate" >/dev/null 2>&1; then
+        die 'wireproxy rejected the config or validation timed out. Validate the original with wireproxy -n -c CONFIG for details.'
+    fi
+    mv -f -- "$candidate" "$RUNTIME/active.conf"
+    candidate=$(mktemp "$RUNTIME/state.XXXXXX")
+    local mode=background owner=0 start=0
+    if $foreground; then mode=foreground; owner=$$; start=$(proc_start "$$"); fi
+    printf '1\n%s\n%s\n%s\n%s\n%s\n%s\n' "$mode" "$resolved" "$port" "$binary" "$owner" "$start" >"$candidate"
+    mv -f -- "$candidate" "$RUNTIME/state"
+    trap - EXIT
+    if $foreground; then
+        run_foreground "$binary"
+    else
+        # The service will acquire session.lock. control.lock still serializes CLI commands.
+        flock -u 8; exec 8>&-
+        systemctl --user reset-failed "$UNIT" >/dev/null 2>&1 || :
+        if ! systemctl --user start "$UNIT"; then
+            systemctl --user stop "$UNIT" >/dev/null 2>&1 || :
+            clear_state
+            die 'Service failed to start. Run wireproxyctl logs.'
+        fi
+        printf 'Started wireproxy on socks5h://127.0.0.1:%s\n' "$port"
+    fi
+}
+
+run_foreground() {
+    local child= exit_code=0
+    cleanup_foreground() {
+        trap - EXIT INT TERM HUP
+        if [[ -n $child ]]; then
+            kill -TERM "$child" 2>/dev/null || :
+            # A bounded escalation process exists only during shutdown.
+            ( sleep 3; kill -KILL "$child" 2>/dev/null || : ) &
+            local killer=$!
+            wait "$child" 2>/dev/null || :
+            kill "$killer" 2>/dev/null || :
+            wait "$killer" 2>/dev/null || :
+        fi
+        lock_actions
+        clear_state
+    }
+    trap cleanup_foreground EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM HUP
+    "$1" -s -c "$RUNTIME/active.conf" 9>&- &
+    child=$!
+    exec 9>&-
+    printf 'Running in foreground. Press Ctrl+C to disconnect.\n'
+    wait "$child" || exit_code=$?
+    child=
+    exit "$exit_code"
+}
+
+disconnect() {
+    load_state
+    if foreground_alive; then
+        # Parent owns cleanup. Release command lock before waiting for its session lock.
+        kill -TERM "$OWNER" 2>/dev/null || :
+        exec 9>&-
+        exec 8>"$RUNTIME/session.lock"
+        flock -w 8 8 || die 'Foreground process has not stopped; inspect its terminal.'
+        # Do not clear here: another command could have started a new session.
+    else
+        if [[ $MODE == background ]]; then
+            systemctl --user stop "$UNIT" || die 'Could not stop the user service; runtime config retained.'
+            systemctl --user reset-failed "$UNIT" >/dev/null 2>&1 || :
+        fi
+        exec 8>"$RUNTIME/session.lock"
+        flock -n 8 || die 'Connection is still running; refusing to remove its configuration.'
+        clear_state
+    fi
+    printf 'Disconnected.\n'
+}
+
+check_connection() {
+    get_status
+    [[ $STATUS == running ]] || die 'No running connection.'
+    need curl
+    local address
+    # -q ignores curlrc; explicit noproxy prevents environment bypass; socks5h uses proxy DNS.
+    address=$(curl -q --fail --silent --show-error --max-time 10 --max-filesize 128 \
+        --noproxy '' --proxy "socks5h://127.0.0.1:$PORT" https://api.ipify.org) || die 'Proxy check failed.'
+    [[ $address =~ ^[0-9a-fA-F:.]+$ && ${#address} -le 45 ]] || die 'IP check returned an unexpected response.'
+    printf 'Proxy verified. Exit IP: %s\n' "$address"
+}
+
+# Service-only entry point: no persistent shell, exec preserves systemd MainPID.
+run_service() {
+    load_state
+    [[ $MODE == background && -r $RUNTIME/active.conf && -x $BINARY ]] || die 'No valid background connection prepared.'
+    exec 8>"$RUNTIME/session.lock"
+    flock -n 8 || die 'Another connection owns the session.'
+    exec "$BINARY" -s -c "$RUNTIME/active.conf"
+}
+
+main() {
+    local action=${1:-help}
+    (( $# == 0 )) || shift
+    case $action in help|--help|-h) usage; return;; esac
+    need flock; runtime
+    if [[ $action == _run ]]; then run_service; fi
+    lock_actions
+    case $action in
+        connect) connect "$@";;
+        disconnect) (( $# == 0 )) || die 'disconnect takes no arguments'; disconnect;;
+        status) (( $# == 0 )) || [[ $# == 1 && $1 == --json ]] || die 'Usage: status [--json]'; print_status "${1:-}";;
+        check) (( $# == 0 )) || die 'check takes no arguments'; check_connection;;
+        logs)
+            (( $# == 0 )) || [[ $# == 1 && $1 == --follow ]] || die 'Usage: logs [--follow]'
+            exec 9>&-
+            if [[ ${1:-} == --follow ]]; then exec journalctl --user -u "$UNIT" -f; fi
+            exec journalctl --user -u "$UNIT" --no-pager -n 60;;
+        *) die "Unknown command: $action (see --help)";;
+    esac
+}
+
+main "$@"

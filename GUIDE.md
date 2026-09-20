@@ -113,15 +113,20 @@ Runtime validation platform: Linux x86-64.
 
 Both AMD64 and ARM64 archives built successfully with static executables, matching ELF architectures, bundled dependency notices and verified checksums. ARM64 executables were not run on hardware or an emulator. The extracted AMD64 archive passed CLI and installation regression tests, Go unit tests and vet, private D-Bus tray/portal tests, and a real local SOCKS5 handshake using its bundled wireproxy. No real provider tunnel was tested. Generated binaries and per-build metadata are release assets, not committed source files.
 
+## v0.1.1 release verification — 2026-09-20
+
+Both AMD64 and ARM64 archives built successfully with static executables, matching ELF architectures, bundled dependency notices and verified checksums. The AMD64 release passed the full CLI, installer, tray, D-Bus, systemd, bundle and local SOCKS5 regression suite. The new tests confirm that validation escalates to `SIGKILL` and that live removal fails closed without a runtime directory. ARM64 executables were inspected but not run on hardware or an emulator. No real provider tunnel was tested.
+
 ## Passed
 
-- 14 Bash CLI integration scenarios: companion generation, unchanged originals, private permissions, special-character paths, duplicate starts, proxy check arguments, failed checks, cleanup, invalid configs and ports, occupied ports, service-start rollback, foreground shutdown and exit codes, session locks, staged installation/removal.
+- 15 Bash CLI integration scenarios: companion generation, unchanged originals, private permissions, special-character paths, duplicate starts, proxy check arguments, failed checks, cleanup, invalid configs and ports, bounded validation shutdown, occupied ports, service-start rollback, foreground shutdown and exit codes, session locks, staged installation/removal.
+- Live uninstallation regression coverage verifies missing runtime state leaves the management executable intact.
 - Go unit tests: CLI JSON parsing, literal command argument handling, local portal URI decoding/rejection.
 - Private D-Bus integration: immediate portal response and cancellation; tray registration; live CLI-state updates; re-registration after a tray host restart; graceful exit.
 - Real wireproxy: configuration include with special characters, local SOCKS5 protocol handshake, listener shutdown and config cleanup. Public example keys and a localhost endpoint were used.
 - Real systemd user manager: wireproxy owns the main process, crash restart, explicit disconnect, and exhaustion of retry limit. A uniquely named runtime test unit was removed afterward.
 - Bash syntax checks, Go vet, and staged desktop launcher validation.
-- Bundle follow-up: installed CLI automatically discovered the private wireproxy binary and completed a real SOCKS5 handshake without a binary override. Uninstall preserved a separately installed executable. A corrupted bundle was rejected before any installation files were created. All 14 CLI integration scenarios passed again.
+- Bundle follow-up: installed CLI automatically discovered the private wireproxy binary and completed a real SOCKS5 handshake without a binary override. Uninstall preserved a separately installed executable. A corrupted bundle was rejected before any installation files were created. All 15 CLI integration scenarios passed again.
 - Installer regression: license files copied from Go's module cache were read-only, causing repeat installation to fail. Notices now use explicit mode 0644 installation. Tests passed for first install, replacement of old 0444 files, a third repeat install and uninstall.
 - Tray port selector: unit tests cover numeric validation, saved selection and permissions, dialog output and cancellation. Private D-Bus tests click a preset and Custom, verify the connection label changes and the port is saved, using a mock dialog executable. Live custom entry requires the optional Zenity utility.
 

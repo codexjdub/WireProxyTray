@@ -8,6 +8,8 @@ cleanup() { if [[ -n $fg ]]; then kill -TERM "$fg" 2>/dev/null || :; wait "$fg" 
 trap cleanup EXIT
 export XDG_RUNTIME_DIR=$temp/runtime MOCK_ROOT=$temp/mock
 mkdir -m700 "$XDG_RUNTIME_DIR" "$MOCK_ROOT" "$temp/tools"
+export REAL_TIMEOUT
+REAL_TIMEOUT=$(command -v timeout)
 export PATH=$temp/tools:$PATH
 export WIREPROXY_BINARY=$temp/tools/wireproxy
 cli=$root/wireproxyctl
@@ -19,12 +21,23 @@ cat >"$temp/tools/wireproxy" <<'EOF'
 #!/usr/bin/env bash
 if [[ $1 == -n ]]; then
     cp "$3" "$MOCK_ROOT/validated"
+    if [[ -f $MOCK_ROOT/hang-validation ]]; then
+        printf '%s\n' "$$" >"$MOCK_ROOT/validation-pid"
+        trap '' TERM
+        while :; do :; done
+    fi
     [[ ! -f $MOCK_ROOT/invalid ]]
     exit $?
 fi
 printf '%s\n' "$$" >"$MOCK_ROOT/child"
 if [[ -f $MOCK_ROOT/exit ]]; then exit 42; fi
 exec sleep 120
+EOF
+cat >"$temp/tools/timeout" <<'EOF'
+#!/usr/bin/env bash
+[[ ${1:-} == --kill-after=5 && ${2:-} == 15 ]] || exit 97
+shift 2
+exec "$REAL_TIMEOUT" --kill-after=0.2 0.2 "$@"
 EOF
 cat >"$temp/tools/ss" <<'EOF'
 #!/usr/bin/env bash
@@ -90,6 +103,13 @@ reject "$cli" connect "$source_file"
 [[ ! -e $XDG_RUNTIME_DIR/wireproxyctl/active.conf ]] || fail 'committed invalid config'
 rm "$MOCK_ROOT/invalid"
 pass 'validation failure leaves no active config'
+touch "$MOCK_ROOT/hang-validation"
+reject "$cli" connect "$source_file"
+validation_pid=$(cat "$MOCK_ROOT/validation-pid")
+! kill -0 "$validation_pid" 2>/dev/null || fail 'hung validator survived kill escalation'
+[[ ! -e $XDG_RUNTIME_DIR/wireproxyctl/active.conf ]] || fail 'committed hung validation config'
+rm "$MOCK_ROOT/hang-validation"
+pass 'validation timeout escalates to SIGKILL'
 touch "$MOCK_ROOT/occupied"
 reject "$cli" connect "$source_file"
 grep -q occupied "$temp/output"

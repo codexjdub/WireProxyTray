@@ -15,6 +15,7 @@ tray:
 test: wireproxy tray
 	bash tests/cli.sh
 	bash tests/install.sh
+	bash tests/uninstall.sh
 	$(GO) -C tray test -buildvcs=false .
 
 check:

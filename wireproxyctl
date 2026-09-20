@@ -181,7 +181,8 @@ connect() {
     trap 'rm -f -- "${candidate:-}"' EXIT
     printf 'WGConfig = `%s`\n\n[Socks5]\nBindAddress = 127.0.0.1:%s\n' "$resolved" "$port" >"$candidate"
     need timeout
-    if ! timeout 15 "$binary" -n -c "$candidate" >/dev/null 2>&1; then
+    # SIGTERM is advisory; bound validation even if a custom binary ignores it.
+    if ! timeout --kill-after=5 15 "$binary" -n -c "$candidate" >/dev/null 2>&1; then
         die 'wireproxy rejected the config or validation timed out. Validate the original with wireproxy -n -c CONFIG for details.'
     fi
     mv -f -- "$candidate" "$RUNTIME/active.conf"

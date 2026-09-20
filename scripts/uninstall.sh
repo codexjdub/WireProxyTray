@@ -18,7 +18,11 @@ for path in "$prefix" "$unit_dir" "${destdir:-/}"; do
 done
 if [[ -z $destdir ]]; then
     # Refuse to remove an executable while its managed connection cannot be stopped.
-    if [[ -x $prefix/bin/wireproxyctl && -n ${XDG_RUNTIME_DIR:-} ]]; then
+    if [[ -x $prefix/bin/wireproxyctl ]]; then
+        [[ -n ${XDG_RUNTIME_DIR:-} ]] || {
+            echo 'XDG_RUNTIME_DIR is unavailable; refusing to uninstall without checking for an active connection.' >&2
+            exit 1
+        }
         "$prefix/bin/wireproxyctl" disconnect
     fi
     if command -v busctl >/dev/null; then

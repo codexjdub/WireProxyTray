@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.1 — 2026-09-20
+
+- Bound configuration validation even when a custom wireproxy binary ignores
+  `SIGTERM`.
+- Refuse live uninstallation when the user runtime directory is unavailable,
+  preserving the controller needed to stop an active connection.
+
 ## v0.1.0 — 2026-09-07
 
 Initial WireProxyTray release:
